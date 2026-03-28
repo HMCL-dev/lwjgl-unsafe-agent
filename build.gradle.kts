@@ -99,7 +99,7 @@ configure<PublishingExtension> {
     }
 }
 
-if (rootProject.ext.has("signing.key")) {
+if (System.getenv("JITPACK").isNullOrBlank() && rootProject.ext.has("signing.key")) {
     signing {
         useInMemoryPgpKeys(
             rootProject.ext["signing.keyId"].toString(),
