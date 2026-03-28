@@ -23,6 +23,23 @@ tasks.withType<JavaCompile> {
     options.release.set(25)
 }
 
+tasks.withType<Javadoc> {
+    (options as StandardJavadocDocletOptions).also {
+        it.jFlags!!.addAll(listOf("-Duser.language=en", "-Duser.country=", "-Duser.variant="))
+
+        it.encoding("UTF-8")
+        it.addStringOption("link", "https://docs.oracle.com/en/java/javase/25/docs/api/")
+        it.addBooleanOption("html5", true)
+        it.addStringOption("Xdoclint:none", "-quiet")
+
+        it.tags!!.addAll(listOf(
+            "apiNote:a:API Note:",
+            "implNote:a:Implementation Note:",
+            "implSpec:a:Implementation Specification:",
+        ))
+    }
+}
+
 tasks.jar {
     manifest {
         attributes(
@@ -57,7 +74,7 @@ configure<PublishingExtension> {
             pom {
                 name.set(project.name)
                 description.set(project.description)
-                url.set("https://github.com/Glavo/MonetFX")
+                url.set("https://github.com/Glavo/lwjgl-unsafe-agent")
 
                 licenses {
                     license {
@@ -75,7 +92,7 @@ configure<PublishingExtension> {
                 }
 
                 scm {
-                    url.set("https://github.com/Glavo/MonetFX")
+                    url.set("https://github.com/HMCL-dev/lwjgl-unsafe-agent")
                 }
             }
         }
