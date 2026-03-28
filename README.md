@@ -6,3 +6,15 @@ However, due to limitations in JDK's optimization capabilities, some methods in 
 
 This project provides an Agent that modifies the bytecode of these methods to ensure they can be correctly inlined, thereby improving performance.
 
+## Usage
+
+Add the following JVM argument to your Minecraft launch options:
+
+```
+-javaagent:path/to/lwjgl-unsafe-agent.jar
+```
+
+## License
+
+This project is licensed under the Apache License, Version 2.0.
+
