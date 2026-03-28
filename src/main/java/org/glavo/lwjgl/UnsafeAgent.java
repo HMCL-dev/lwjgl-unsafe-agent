@@ -204,6 +204,8 @@ public final class UnsafeAgent {
             // Generate new code body
             mb.withCode(cb -> generateCode(cb, unsafeMethodName, mtd));
         });
+
+        System.out.println("[lwjgl-unsafe-agent] rewrote " + mm);
     }
 
     /**
