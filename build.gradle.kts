@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "org.glavo"
-version = "1.0-SNAPSHOT"
+version = "1.0" + "-SNAPSHOT"
 description = "Fix the performance of LWJGL 3.4.1's MemoryUtil on JDK 25"
 
 repositories {
