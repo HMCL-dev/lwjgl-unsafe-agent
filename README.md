@@ -8,7 +8,9 @@ This project provides an Agent that modifies the bytecode of these methods to en
 
 ## Usage
 
-Add the following JVM argument to your Minecraft launch options:
+First, download the latest release from the [release page](https://github.com/HMCL-dev/lwjgl-unsafe-agent/releases).
+
+Then add the following JVM argument to your Minecraft launch options:
 
 ```
 -javaagent:path/to/lwjgl-unsafe-agent.jar
