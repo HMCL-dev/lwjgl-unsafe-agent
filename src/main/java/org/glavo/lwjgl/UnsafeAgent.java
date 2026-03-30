@@ -16,13 +16,8 @@
 package org.glavo.lwjgl;
 
 import java.io.PrintStream;
-import java.lang.classfile.ClassBuilder;
-import java.lang.classfile.ClassFile;
-import java.lang.classfile.CodeBuilder;
-import java.lang.classfile.CodeModel;
-import java.lang.classfile.MethodModel;
+import java.lang.classfile.*;
 import java.lang.constant.ClassDesc;
-import java.lang.constant.ConstantDescs;
 import java.lang.constant.MethodTypeDesc;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
@@ -31,35 +26,14 @@ import java.lang.reflect.AccessFlag;
 import java.security.ProtectionDomain;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.ObjIntConsumer;
+
+import static java.lang.constant.ConstantDescs.*;
 
 public final class UnsafeAgent {
-
     private static final String MEMORY_UTIL_CLASS = "org/lwjgl/system/MemoryUtil";
-
     private static final ClassDesc CD_Unsafe = ClassDesc.of("jdk.internal.misc.Unsafe");
-    private static final MethodTypeDesc MTD_getUnsafe = MethodTypeDesc.of(CD_Unsafe);
-
-    // memGetXxx method name -> Unsafe method name
-    private static final Map<String, String> GET_METHODS = Map.of(
-            "memGetByte", "getByte",
-            "memGetShort", "getShort",
-            "memGetInt", "getInt",
-            "memGetLong", "getLong",
-            "memGetFloat", "getFloat",
-            "memGetDouble", "getDouble",
-            "memGetAddress", "getAddress"
-    );
-
-    // memPutXxx method name -> Unsafe method name
-    private static final Map<String, String> PUT_METHODS = Map.of(
-            "memPutByte", "putByte",
-            "memPutShort", "putShort",
-            "memPutInt", "putInt",
-            "memPutLong", "putLong",
-            "memPutFloat", "putFloat",
-            "memPutDouble", "putDouble",
-            "memPutAddress", "putAddress"
-    );
 
     private static void log(String msg, PrintStream out) {
         out.println("[lwjgl-unsafe-agent] " + msg);
@@ -86,6 +60,90 @@ public final class UnsafeAgent {
     }
 
     private static final class MemoryUtilTransformer implements ClassFileTransformer {
+
+        private abstract static class MemoryMethodTransform implements Consumer<CodeBuilder> {
+            protected static final MethodTypeDesc MTD_getUnsafe = MethodTypeDesc.of(CD_Unsafe);
+
+            protected final MethodTypeDesc type;
+            protected final String unsafeMethod;
+
+            private MemoryMethodTransform(MethodTypeDesc type, String unsafeMethod) {
+                this.type = type;
+                this.unsafeMethod = unsafeMethod;
+            }
+
+            static final class Get extends MemoryMethodTransform {
+                private final ClassDesc primaryType;
+                private final Consumer<CodeBuilder> emitReturn;
+
+                private Get(ClassDesc primaryType, String unsafeMethod, Consumer<CodeBuilder> emitReturn) {
+                    super(MethodTypeDesc.of(primaryType, CD_long), unsafeMethod);
+                    this.primaryType = primaryType;
+                    this.emitReturn = emitReturn;
+                }
+
+                @Override
+                public void accept(CodeBuilder codeBuilder) {
+                    // Push the Unsafe instance
+                    codeBuilder.invokestatic(CD_Unsafe, "getUnsafe", MTD_getUnsafe);
+
+                    // Push the address parameter (slot 0, type long)
+                    codeBuilder.lload(0);
+
+                    // Get method: invoke getXxx and return the value
+                    codeBuilder.invokevirtual(CD_Unsafe, unsafeMethod,
+                            MethodTypeDesc.of(primaryType, CD_long));
+                    emitReturn.accept(codeBuilder);
+                }
+            }
+
+            static final class Put extends MemoryMethodTransform {
+                private final ClassDesc primaryType;
+                private final ObjIntConsumer<CodeBuilder> loadValue;
+
+                private Put(ClassDesc primaryType, String unsafeMethod, ObjIntConsumer<CodeBuilder> loadValue) {
+                    super(MethodTypeDesc.of(CD_void, CD_long, primaryType), unsafeMethod);
+                    this.primaryType = primaryType;
+                    this.loadValue = loadValue;
+                }
+
+                @Override
+                public void accept(CodeBuilder codeBuilder) {
+
+                    // Push the Unsafe instance
+                    codeBuilder.invokestatic(CD_Unsafe, "getUnsafe", MTD_getUnsafe);
+
+                    // Push the address parameter (slot 0, type long)
+                    codeBuilder.lload(0);
+
+                    // Put method: load value parameter (slot 2) and invoke putXxx
+                    loadValue.accept(codeBuilder, 2);
+                    codeBuilder.invokevirtual(CD_Unsafe, unsafeMethod,
+                            MethodTypeDesc.of(CD_void, CD_long, primaryType));
+                    codeBuilder.return_();
+                }
+            }
+        }
+
+        private final Map<String, MemoryMethodTransform> transforms = Map.ofEntries(
+                // memGetXxx
+                Map.entry("memGetByte", new MemoryMethodTransform.Get(CD_byte, "getByte", CodeBuilder::ireturn)),
+                Map.entry("memGetShort", new MemoryMethodTransform.Get(CD_short, "getShort", CodeBuilder::ireturn)),
+                Map.entry("memGetInt", new MemoryMethodTransform.Get(CD_int, "getInt", CodeBuilder::ireturn)),
+                Map.entry("memGetLong", new MemoryMethodTransform.Get(CD_long, "getLong", CodeBuilder::lreturn)),
+                Map.entry("memGetFloat", new MemoryMethodTransform.Get(CD_float, "getFloat", CodeBuilder::freturn)),
+                Map.entry("memGetDouble", new MemoryMethodTransform.Get(CD_double, "getDouble", CodeBuilder::dreturn)),
+                Map.entry("memGetAddress", new MemoryMethodTransform.Get(CD_long, "getAddress", CodeBuilder::lreturn)),
+
+                // memPutXxx
+                Map.entry("memPutByte", new MemoryMethodTransform.Put(CD_byte, "putByte", CodeBuilder::iload)),
+                Map.entry("memPutShort", new MemoryMethodTransform.Put(CD_short, "putShort", CodeBuilder::iload)),
+                Map.entry("memPutInt", new MemoryMethodTransform.Put(CD_int, "putInt", CodeBuilder::iload)),
+                Map.entry("memPutLong", new MemoryMethodTransform.Put(CD_long, "putLong", CodeBuilder::lload)),
+                Map.entry("memPutFloat", new MemoryMethodTransform.Put(CD_float, "putFloat", CodeBuilder::fload)),
+                Map.entry("memPutDouble", new MemoryMethodTransform.Put(CD_double, "putDouble", CodeBuilder::dload)),
+                Map.entry("memPutAddress", new MemoryMethodTransform.Put(CD_long, "putAddress", CodeBuilder::lload))
+        );
 
         @Override
         public byte[] transform(Module module,
@@ -121,7 +179,8 @@ public final class UnsafeAgent {
             }
 
             try {
-                byte[] result = transformMemoryUtil(classfileBuffer);
+                var classFile = ClassFile.of();
+                byte[] result = classFile.transformClass(classFile.parse(classfileBuffer), this::transform);
                 log("Successfully transformed MemoryUtil", System.out);
                 return result;
             } catch (Throwable t) {
@@ -130,115 +189,31 @@ public final class UnsafeAgent {
                 return null;
             }
         }
-    }
 
-    private static byte[] transformMemoryUtil(byte[] classfileBuffer) {
-        var cf = ClassFile.of();
-        var model = cf.parse(classfileBuffer);
-
-        return cf.transformClass(model, (classBuilder, classElement) -> {
+        private void transform(ClassBuilder classBuilder, ClassElement classElement) {
             if (classElement instanceof MethodModel mm && mm.flags().has(AccessFlag.STATIC)) {
-                String name = mm.methodName().stringValue();
-                String desc = mm.methodType().stringValue();
+                String methodName = mm.methodName().stringValue();
 
-                String unsafeName = GET_METHODS.get(name);
-                if (unsafeName != null && isGetDescriptor(desc)) {
-                    rewriteMethod(classBuilder, mm, unsafeName);
-                    return;
-                }
+                MemoryMethodTransform transform = transforms.get(methodName);
+                if (transform.type.descriptorString().equals(mm.methodType().stringValue())) {
+                    classBuilder.withMethod(mm.methodName().stringValue(), transform.type, mm.flags().flagsMask(), mb -> {
+                        for (var me : mm) {
+                            if (me instanceof CodeModel) {
+                                // Replace the method body with a direct call to `jdk.internal.misc.Unsafe`.
+                                mb.withCode(transform);
+                            } else {
+                                // Preserve non-code method attributes (annotations, etc.)
+                                mb.with(me);
+                            }
+                        }
+                    });
 
-                unsafeName = PUT_METHODS.get(name);
-                if (unsafeName != null && isPutDescriptor(desc)) {
-                    rewriteMethod(classBuilder, mm, unsafeName);
+                    log("rewrote %s%s".formatted(methodName, transform.type.displayDescriptor()), System.out);
                     return;
                 }
             }
             classBuilder.with(classElement);
-        });
-    }
-
-    /// Check if descriptor matches `(J)X` — a get method taking a long address
-    /// and returning a primitive value.
-    private static boolean isGetDescriptor(String desc) {
-        return desc.length() == 4 && desc.startsWith("(J)");
-    }
-
-    /// Check if descriptor matches `(JX)V` — a put method taking a long address
-    /// and a primitive value, returning void.
-    private static boolean isPutDescriptor(String desc) {
-        return desc.length() == 5 && desc.startsWith("(J") && desc.endsWith(")V");
-    }
-
-    /// Replace the method body with a direct call to `jdk.internal.misc.Unsafe`.
-    /// Non-code attributes (annotations, etc.) are preserved.
-    private static void rewriteMethod(ClassBuilder classBuilder, MethodModel mm, String unsafeMethodName) {
-        var mtd = MethodTypeDesc.ofDescriptor(mm.methodType().stringValue());
-
-        classBuilder.withMethod(mm.methodName().stringValue(), mtd, mm.flags().flagsMask(), mb -> {
-            // Preserve non-code method attributes (annotations, etc.)
-            for (var me : mm) {
-                if (!(me instanceof CodeModel)) {
-                    mb.with(me);
-                }
-            }
-
-            // Generate new code body
-            mb.withCode(cb -> generateCode(cb, unsafeMethodName, mtd));
-        });
-
-        log("rewrote %s%s".formatted(mm.methodName().stringValue(), mm.methodType().stringValue()), System.out);
-    }
-
-    /// Generate bytecode that delegates to `jdk.internal.misc.Unsafe`.
-    ///
-    /// For get methods (`(J)X`):
-    ///
-    /// ```java
-    /// Unsafe.getUnsafe().getXxx(address)
-    /// ```
-    ///
-    /// For put methods (`(JX)V`):
-    /// ```java
-    /// Unsafe.getUnsafe().putXxx(address, value)
-    /// ```
-    private static void generateCode(CodeBuilder cb, String unsafeMethodName, MethodTypeDesc mtd) {
-        // Push the Unsafe instance
-        cb.invokestatic(CD_Unsafe, "getUnsafe", MTD_getUnsafe);
-
-        // Push the address parameter (slot 0, type long)
-        cb.lload(0);
-
-        if (mtd.returnType().descriptorString().equals("V")) {
-            // Put method: load value parameter (slot 2) and invoke putXxx
-            ClassDesc valueType = mtd.parameterType(1);
-            loadValue(cb, valueType, 2);
-            cb.invokevirtual(CD_Unsafe, unsafeMethodName,
-                    MethodTypeDesc.of(ConstantDescs.CD_void, ConstantDescs.CD_long, valueType));
-            cb.return_();
-        } else {
-            // Get method: invoke getXxx and return the value
-            ClassDesc returnType = mtd.returnType();
-            cb.invokevirtual(CD_Unsafe, unsafeMethodName,
-                    MethodTypeDesc.of(returnType, ConstantDescs.CD_long));
-            emitReturn(cb, returnType);
         }
     }
 
-    private static void loadValue(CodeBuilder cb, ClassDesc type, int slot) {
-        switch (type.descriptorString()) {
-            case "J" -> cb.lload(slot);
-            case "F" -> cb.fload(slot);
-            case "D" -> cb.dload(slot);
-            default -> cb.iload(slot);  // B, S, I, C, Z
-        }
-    }
-
-    private static void emitReturn(CodeBuilder cb, ClassDesc type) {
-        switch (type.descriptorString()) {
-            case "J" -> cb.lreturn();
-            case "F" -> cb.freturn();
-            case "D" -> cb.dreturn();
-            default -> cb.ireturn();  // B, S, I, C, Z
-        }
-    }
 }
