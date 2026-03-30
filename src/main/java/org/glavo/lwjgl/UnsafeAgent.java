@@ -76,7 +76,7 @@ public final class UnsafeAgent {
     }
 
     private static void init(Instrumentation inst) {
-        log("version: " + BuildConfig.PROJECT_VERSION, System.out);
+        log("LWJGL Unsafe Agent version: " + BuildConfig.PROJECT_VERSION, System.out);
 
         instrumentation = inst;
         inst.addTransformer(new MemoryUtilTransformer());
