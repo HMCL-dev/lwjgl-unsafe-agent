@@ -24,10 +24,10 @@ import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDescs;
 import java.lang.constant.MethodTypeDesc;
 import java.lang.instrument.ClassFileTransformer;
+import java.lang.instrument.IllegalClassFormatException;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.AccessFlag;
 import java.security.ProtectionDomain;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -72,44 +72,15 @@ public final class UnsafeAgent {
 
     private static void init(Instrumentation inst) {
         instrumentation = inst;
-        exportUnsafePackage();
         inst.addTransformer(new MemoryUtilTransformer());
-    }
-
-    /**
-     * Export {@code jdk.internal.misc} from {@code java.base} to the unnamed modules
-     * of the platform and system class loaders, so that the transformed MemoryUtil
-     * bytecode can access {@code jdk.internal.misc.Unsafe}.
-     */
-    private static void exportUnsafePackage() {
-        Module javaBase = Object.class.getModule();
-        Set<Module> targets = new HashSet<>();
-        addUnnamedModule(targets, ClassLoader.getPlatformClassLoader());
-        addUnnamedModule(targets, ClassLoader.getSystemClassLoader());
-        if (!targets.isEmpty()) {
-            instrumentation.redefineModule(javaBase,
-                    Set.of(),                                       // extraReads
-                    Map.of("jdk.internal.misc", targets),           // extraExports
-                    Map.of(),                                       // extraOpens
-                    Set.of(),                                       // extraUses
-                    Map.of()                                        // extraProvides
-            );
-        }
-    }
-
-    private static void addUnnamedModule(Set<Module> set, ClassLoader loader) {
-        if (loader != null) {
-            set.add(loader.getUnnamedModule());
-        }
     }
 
     /**
      * Ensure {@code jdk.internal.misc} is exported to the unnamed module of the given class loader.
      */
-    private static void ensureExported(ClassLoader loader) {
-        if (loader == null) return;
+    private static void ensureExported(Module target) {
+        if (target == null) return;
         Module javaBase = Object.class.getModule();
-        Module target = loader.getUnnamedModule();
         if (!javaBase.isExported("jdk.internal.misc", target)) {
             instrumentation.redefineModule(javaBase,
                     Set.of(),
@@ -122,16 +93,18 @@ public final class UnsafeAgent {
     }
 
     private static final class MemoryUtilTransformer implements ClassFileTransformer {
+
         @Override
-        public byte[] transform(ClassLoader loader, String className,
+        public byte[] transform(Module module,
+                                ClassLoader loader, String className,
                                 Class<?> classBeingRedefined,
                                 ProtectionDomain protectionDomain,
-                                byte[] classfileBuffer) {
+                                byte[] classfileBuffer) throws IllegalClassFormatException {
             if (!MEMORY_UTIL_CLASS.equals(className)) {
                 return null;
             }
 
-            ensureExported(loader);
+            ensureExported(module);
 
             try {
                 byte[] result = transformMemoryUtil(classfileBuffer);
