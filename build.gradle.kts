@@ -11,7 +11,7 @@ group = "org.glavo"
 description = "Fix the performance of LWJGL 3.4.1's MemoryUtil on JDK 25"
 
 if (version == Project.DEFAULT_VERSION) {
-    version = "2.0" + "-SNAPSHOT"
+    version = "2.0" // + "-SNAPSHOT"
 }
 
 repositories {
