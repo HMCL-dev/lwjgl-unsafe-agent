@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "org.glavo"
-version = "2.0" + "-SNAPSHOT"
+version = project.findProperty("version")?.toString() ?: ("2.0" + "-SNAPSHOT")
 description = "Fix the performance of LWJGL 3.4.1's MemoryUtil on JDK 25"
 
 repositories {
@@ -32,11 +32,13 @@ tasks.withType<Javadoc> {
         it.addBooleanOption("html5", true)
         it.addStringOption("Xdoclint:none", "-quiet")
 
-        it.tags!!.addAll(listOf(
-            "apiNote:a:API Note:",
-            "implNote:a:Implementation Note:",
-            "implSpec:a:Implementation Specification:",
-        ))
+        it.tags!!.addAll(
+            listOf(
+                "apiNote:a:API Note:",
+                "implNote:a:Implementation Note:",
+                "implSpec:a:Implementation Specification:",
+            )
+        )
     }
 }
 

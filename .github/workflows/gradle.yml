@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - name: Get short SHA
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
       - name: Set up JDK 25
         uses: actions/setup-java@v5
         with:
@@ -17,9 +19,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
       - name: Build with Gradle
-        run: ./gradlew build --no-daemon
+        run: ./gradlew build --no-daemon -Pversion=$SHORT_SHA
       - name: Upload JAR
         uses: actions/upload-artifact@v7
         with:
-          path: build/libs/lwjgl-unsafe-agent-*.jar
+          path: build/libs/lwjgl-unsafe-agent-${{env.SHORT_SHA}}.jar
           archive: false
