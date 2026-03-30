@@ -24,7 +24,6 @@ import java.lang.constant.ClassDesc;
 import java.lang.constant.ConstantDescs;
 import java.lang.constant.MethodTypeDesc;
 import java.lang.instrument.ClassFileTransformer;
-import java.lang.instrument.IllegalClassFormatException;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.AccessFlag;
 import java.security.ProtectionDomain;
@@ -81,10 +80,12 @@ public final class UnsafeAgent {
     private static void ensureExported(Module target) {
         if (target == null) return;
         Module javaBase = Object.class.getModule();
-        if (!javaBase.isExported("jdk.internal.misc", target)) {
+        String miscPackage = CD_Unsafe.packageName();
+
+        if (!javaBase.isExported(miscPackage, target)) {
             instrumentation.redefineModule(javaBase,
                     Set.of(),
-                    Map.of("jdk.internal.misc", Set.of(target)),
+                    Map.of(miscPackage, Set.of(target)),
                     Map.of(),
                     Set.of(),
                     Map.of()
@@ -99,7 +100,7 @@ public final class UnsafeAgent {
                                 ClassLoader loader, String className,
                                 Class<?> classBeingRedefined,
                                 ProtectionDomain protectionDomain,
-                                byte[] classfileBuffer) throws IllegalClassFormatException {
+                                byte[] classfileBuffer) {
             if (!MEMORY_UTIL_CLASS.equals(className)) {
                 return null;
             }
