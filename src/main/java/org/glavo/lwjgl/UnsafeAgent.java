@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.ObjIntConsumer;
+import java.util.stream.Collectors;
 
 import static java.lang.constant.ConstantDescs.*;
 
@@ -220,7 +221,13 @@ public final class UnsafeAgent {
                         }
                     });
 
-                    log("rewrote %s%s".formatted(methodName, body.type.displayDescriptor()), System.out);
+                    log("rewrote %s.%s(%s)".formatted(
+                            MEMORY_UTIL_CLASS.replace('/', '.'),
+                            methodName,
+                            body.type.parameterList().stream()
+                                    .map(ClassDesc::displayName)
+                                    .collect(Collectors.joining(", "))
+                            ), System.out);
                     return;
                 }
             }
