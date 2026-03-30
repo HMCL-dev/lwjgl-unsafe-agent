@@ -221,7 +221,7 @@ public final class UnsafeAgent {
                         }
                     });
 
-                    log("rewrote %s.%s(%s)".formatted(
+                    log("Rewrote %s.%s(%s)".formatted(
                             MEMORY_UTIL_CLASS.replace('/', '.'),
                             methodName,
                             body.type.parameterList().stream()
