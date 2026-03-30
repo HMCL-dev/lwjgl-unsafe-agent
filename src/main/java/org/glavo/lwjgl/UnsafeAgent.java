@@ -155,11 +155,6 @@ public final class UnsafeAgent {
                 return null;
             }
 
-            if (instrumentation == null) {
-                log("Instrumentation not initialized", System.err);
-                return null;
-            }
-
             try {
                 Module javaBase = Object.class.getModule();
                 String miscPackage = CD_Unsafe.packageName();
