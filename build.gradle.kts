@@ -7,8 +7,11 @@ plugins {
 }
 
 group = "org.glavo"
-version = project.findProperty("version")?.toString() ?: ("2.0" + "-SNAPSHOT")
 description = "Fix the performance of LWJGL 3.4.1's MemoryUtil on JDK 25"
+
+if (version == Project.DEFAULT_VERSION) {
+    version = "2.0" + "-SNAPSHOT"
+}
 
 repositories {
     mavenCentral()
