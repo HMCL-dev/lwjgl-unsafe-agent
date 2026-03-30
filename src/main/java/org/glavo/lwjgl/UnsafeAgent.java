@@ -200,13 +200,16 @@ public final class UnsafeAgent {
         }
 
         private void transform(ClassBuilder classBuilder, ClassElement classElement) {
-            if (classElement instanceof MethodModel mm && mm.flags().has(AccessFlag.STATIC)) {
-                String methodName = mm.methodName().stringValue();
+            if (classElement instanceof MethodModel methodModel) {
+                String methodName = methodModel.methodName().stringValue();
+                AccessFlags methodFlags = methodModel.flags();
 
                 MemoryMethodTransform transform = transforms.get(methodName);
-                if (transform.type.descriptorString().equals(mm.methodType().stringValue())) {
-                    classBuilder.withMethod(mm.methodName().stringValue(), transform.type, mm.flags().flagsMask(), mb -> {
-                        for (var me : mm) {
+                if (methodFlags.has(AccessFlag.STATIC)
+                        && transform != null
+                        && transform.type.descriptorString().equals(methodModel.methodType().stringValue())) {
+                    classBuilder.withMethod(methodName, transform.type, methodFlags.flagsMask(), mb -> {
+                        for (MethodElement me : methodModel) {
                             if (me instanceof CodeModel) {
                                 // Replace the method body with a direct call to `jdk.internal.misc.Unsafe`.
                                 mb.withCode(transform);
