@@ -171,6 +171,8 @@ public final class UnsafeAgent {
                             Set.of(),
                             Map.of()
                     );
+
+                    log("Add exports %s/%s to %s".formatted(javaBase.getName(), miscPackage, module.getName()), System.out);
                 }
             } catch (Exception e) {
                 log("Failed to redefine module", System.err);
