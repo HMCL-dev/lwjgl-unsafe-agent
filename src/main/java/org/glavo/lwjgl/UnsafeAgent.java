@@ -187,9 +187,9 @@ public final class UnsafeAgent {
                 byte[] result = classFile.transformClass(classFile.parse(classfileBuffer), this::transform);
                 log("Successfully transformed MemoryUtil", System.out);
                 return result;
-            } catch (Throwable t) {
+            } catch (Exception e) {
                 log("Failed to transform MemoryUtil", System.err);
-                t.printStackTrace(System.err);
+                e.printStackTrace(System.err);
                 return null;
             }
         }
