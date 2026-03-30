@@ -2,6 +2,7 @@ plugins {
     id("java")
     id("signing")
     id("maven-publish")
+    id("com.github.gmazzo.buildconfig") version "6.0.9"
     id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
     id("org.glavo.load-maven-publish-properties") version "0.1.0"
 }
@@ -52,6 +53,13 @@ tasks.jar {
             "Agent-Class" to "org.glavo.lwjgl.UnsafeAgent"
         )
     }
+}
+
+buildConfig {
+    packageName("org.glavo.lwjgl")
+
+    useJavaOutput()
+    buildConfigField<String>("PROJECT_VERSION", provider { project.version.toString() })
 }
 
 dependencies {

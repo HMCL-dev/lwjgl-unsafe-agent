@@ -15,6 +15,7 @@
  */
 package org.glavo.lwjgl;
 
+import java.io.PrintStream;
 import java.lang.classfile.ClassBuilder;
 import java.lang.classfile.ClassFile;
 import java.lang.classfile.CodeBuilder;
@@ -59,6 +60,10 @@ public final class UnsafeAgent {
             "memPutAddress", "putAddress"
     );
 
+    private static void log(String msg, PrintStream out) {
+        out.println("[lwjgl-unsafe-agent] " + msg);
+    }
+
     private static Instrumentation instrumentation;
 
     public static void premain(String agentArgs, Instrumentation inst) {
@@ -70,6 +75,8 @@ public final class UnsafeAgent {
     }
 
     private static void init(Instrumentation inst) {
+        log("version: " + BuildConfig.PROJECT_VERSION, System.out);
+
         instrumentation = inst;
         inst.addTransformer(new MemoryUtilTransformer());
     }
@@ -107,10 +114,10 @@ public final class UnsafeAgent {
 
             try {
                 byte[] result = transformMemoryUtil(classfileBuffer);
-                System.out.println("[lwjgl-unsafe-agent] Successfully transformed MemoryUtil");
+                log("Successfully transformed MemoryUtil", System.out);
                 return result;
             } catch (Throwable t) {
-                System.err.println("[lwjgl-unsafe-agent] Failed to transform MemoryUtil");
+                log("Failed to transform MemoryUtil", System.err);
                 t.printStackTrace(System.err);
                 return null;
             }
@@ -171,7 +178,7 @@ public final class UnsafeAgent {
             mb.withCode(cb -> generateCode(cb, unsafeMethodName, mtd));
         });
 
-        System.out.println("[lwjgl-unsafe-agent] rewrote " + mm);
+        log("rewrote %s%s".formatted(mm.methodName().stringValue(), mm.methodType().stringValue()), System.out);
     }
 
     /// Generate bytecode that delegates to `jdk.internal.misc.Unsafe`.
