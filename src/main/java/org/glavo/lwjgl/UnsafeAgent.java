@@ -32,8 +32,6 @@ import java.util.stream.Collectors;
 import static java.lang.constant.ConstantDescs.*;
 
 public final class UnsafeAgent {
-    private static final String MEMORY_UTIL_CLASS = "org/lwjgl/system/MemoryUtil";
-    private static final ClassDesc CD_Unsafe = ClassDesc.of("jdk.internal.misc.Unsafe");
 
     private static void log(String msg, PrintStream out) {
         out.println("[lwjgl-unsafe-agent] " + msg);
@@ -54,6 +52,8 @@ public final class UnsafeAgent {
     }
 
     private static final class MemoryUtilTransformer implements ClassFileTransformer {
+        private static final String MEMORY_UTIL_CLASS = "org/lwjgl/system/MemoryUtil";
+        private static final ClassDesc CD_Unsafe = ClassDesc.of("jdk.internal.misc.Unsafe");
 
         private final Instrumentation instrumentation;
 
