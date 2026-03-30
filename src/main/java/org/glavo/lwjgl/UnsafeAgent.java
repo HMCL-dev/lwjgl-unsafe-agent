@@ -26,6 +26,7 @@ import java.lang.constant.ConstantDescs;
 import java.lang.constant.MethodTypeDesc;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.AccessFlag;
 import java.security.ProtectionDomain;
 import java.util.Map;
@@ -79,23 +80,9 @@ public final class UnsafeAgent {
 
         instrumentation = inst;
         inst.addTransformer(new MemoryUtilTransformer());
-    }
 
-    /// Ensure `jdk.internal.misc` is exported to the unnamed module of the given class loader.
-    private static void ensureExported(Module target) {
-        if (target == null) return;
-        Module javaBase = Object.class.getModule();
-        String miscPackage = CD_Unsafe.packageName();
-
-        if (!javaBase.isExported(miscPackage, target)) {
-            instrumentation.redefineModule(javaBase,
-                    Set.of(),
-                    Map.of(miscPackage, Set.of(target)),
-                    Map.of(),
-                    Set.of(),
-                    Map.of()
-            );
-        }
+        // Ensure the instrumentation is initialized before we try to transform
+        VarHandle.fullFence();
     }
 
     private static final class MemoryUtilTransformer implements ClassFileTransformer {
@@ -110,7 +97,22 @@ public final class UnsafeAgent {
                 return null;
             }
 
-            ensureExported(module);
+            if (instrumentation == null) {
+                log("Instrumentation not initialized", System.err);
+                return null;
+            }
+
+            Module javaBase = Object.class.getModule();
+            String miscPackage = CD_Unsafe.packageName();
+            if (!javaBase.isExported(miscPackage, module)) {
+                instrumentation.redefineModule(javaBase,
+                        Set.of(),
+                        Map.of(miscPackage, Set.of(module)),
+                        Map.of(),
+                        Set.of(),
+                        Map.of()
+                );
+            }
 
             try {
                 byte[] result = transformMemoryUtil(classfileBuffer);
