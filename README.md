@@ -10,7 +10,10 @@ This project provides an Agent that modifies the bytecode of these methods to en
 
 ## Usage
 
-First, download the latest release from the [release page](https://github.com/HMCL-dev/lwjgl-unsafe-agent/releases).
+First, download `lwjgl-unsafe-agent.jar`. You can get it from the following places:
+
+1. [GitHub Releases](https://github.com/HMCL-dev/lwjgl-unsafe-agent/releases)
+2. [Maven Central](https://central.sonatype.com/artifact/org.glavo/lwjgl-unsafe-agent)
 
 Then add the following JVM argument to your Minecraft launch options:
 
