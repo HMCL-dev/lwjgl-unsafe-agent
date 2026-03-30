@@ -61,18 +61,18 @@ public final class UnsafeAgent {
 
     private static final class MemoryUtilTransformer implements ClassFileTransformer {
 
-        private abstract static class MemoryMethodTransform implements Consumer<CodeBuilder> {
+        private abstract static class MemoryMethodBody implements Consumer<CodeBuilder> {
             protected static final MethodTypeDesc MTD_getUnsafe = MethodTypeDesc.of(CD_Unsafe);
 
             protected final MethodTypeDesc type;
             protected final String unsafeMethod;
 
-            private MemoryMethodTransform(MethodTypeDesc type, String unsafeMethod) {
+            private MemoryMethodBody(MethodTypeDesc type, String unsafeMethod) {
                 this.type = type;
                 this.unsafeMethod = unsafeMethod;
             }
 
-            static final class Get extends MemoryMethodTransform {
+            static final class Get extends MemoryMethodBody {
                 private final ClassDesc primaryType;
                 private final Consumer<CodeBuilder> emitReturn;
 
@@ -97,7 +97,7 @@ public final class UnsafeAgent {
                 }
             }
 
-            static final class Put extends MemoryMethodTransform {
+            static final class Put extends MemoryMethodBody {
                 private final ClassDesc primaryType;
                 private final ObjIntConsumer<CodeBuilder> loadValue;
 
@@ -125,24 +125,24 @@ public final class UnsafeAgent {
             }
         }
 
-        private final Map<String, MemoryMethodTransform> transforms = Map.ofEntries(
+        private final Map<String, MemoryMethodBody> bodies = Map.ofEntries(
                 // memGetXxx
-                Map.entry("memGetByte", new MemoryMethodTransform.Get(CD_byte, "getByte", CodeBuilder::ireturn)),
-                Map.entry("memGetShort", new MemoryMethodTransform.Get(CD_short, "getShort", CodeBuilder::ireturn)),
-                Map.entry("memGetInt", new MemoryMethodTransform.Get(CD_int, "getInt", CodeBuilder::ireturn)),
-                Map.entry("memGetLong", new MemoryMethodTransform.Get(CD_long, "getLong", CodeBuilder::lreturn)),
-                Map.entry("memGetFloat", new MemoryMethodTransform.Get(CD_float, "getFloat", CodeBuilder::freturn)),
-                Map.entry("memGetDouble", new MemoryMethodTransform.Get(CD_double, "getDouble", CodeBuilder::dreturn)),
-                Map.entry("memGetAddress", new MemoryMethodTransform.Get(CD_long, "getAddress", CodeBuilder::lreturn)),
+                Map.entry("memGetByte", new MemoryMethodBody.Get(CD_byte, "getByte", CodeBuilder::ireturn)),
+                Map.entry("memGetShort", new MemoryMethodBody.Get(CD_short, "getShort", CodeBuilder::ireturn)),
+                Map.entry("memGetInt", new MemoryMethodBody.Get(CD_int, "getInt", CodeBuilder::ireturn)),
+                Map.entry("memGetLong", new MemoryMethodBody.Get(CD_long, "getLong", CodeBuilder::lreturn)),
+                Map.entry("memGetFloat", new MemoryMethodBody.Get(CD_float, "getFloat", CodeBuilder::freturn)),
+                Map.entry("memGetDouble", new MemoryMethodBody.Get(CD_double, "getDouble", CodeBuilder::dreturn)),
+                Map.entry("memGetAddress", new MemoryMethodBody.Get(CD_long, "getAddress", CodeBuilder::lreturn)),
 
                 // memPutXxx
-                Map.entry("memPutByte", new MemoryMethodTransform.Put(CD_byte, "putByte", CodeBuilder::iload)),
-                Map.entry("memPutShort", new MemoryMethodTransform.Put(CD_short, "putShort", CodeBuilder::iload)),
-                Map.entry("memPutInt", new MemoryMethodTransform.Put(CD_int, "putInt", CodeBuilder::iload)),
-                Map.entry("memPutLong", new MemoryMethodTransform.Put(CD_long, "putLong", CodeBuilder::lload)),
-                Map.entry("memPutFloat", new MemoryMethodTransform.Put(CD_float, "putFloat", CodeBuilder::fload)),
-                Map.entry("memPutDouble", new MemoryMethodTransform.Put(CD_double, "putDouble", CodeBuilder::dload)),
-                Map.entry("memPutAddress", new MemoryMethodTransform.Put(CD_long, "putAddress", CodeBuilder::lload))
+                Map.entry("memPutByte", new MemoryMethodBody.Put(CD_byte, "putByte", CodeBuilder::iload)),
+                Map.entry("memPutShort", new MemoryMethodBody.Put(CD_short, "putShort", CodeBuilder::iload)),
+                Map.entry("memPutInt", new MemoryMethodBody.Put(CD_int, "putInt", CodeBuilder::iload)),
+                Map.entry("memPutLong", new MemoryMethodBody.Put(CD_long, "putLong", CodeBuilder::lload)),
+                Map.entry("memPutFloat", new MemoryMethodBody.Put(CD_float, "putFloat", CodeBuilder::fload)),
+                Map.entry("memPutDouble", new MemoryMethodBody.Put(CD_double, "putDouble", CodeBuilder::dload)),
+                Map.entry("memPutAddress", new MemoryMethodBody.Put(CD_long, "putAddress", CodeBuilder::lload))
         );
 
         @Override
@@ -204,15 +204,15 @@ public final class UnsafeAgent {
                 String methodName = methodModel.methodName().stringValue();
                 AccessFlags methodFlags = methodModel.flags();
 
-                MemoryMethodTransform transform = transforms.get(methodName);
+                MemoryMethodBody body = bodies.get(methodName);
                 if (methodFlags.has(AccessFlag.STATIC)
-                        && transform != null
-                        && transform.type.descriptorString().equals(methodModel.methodType().stringValue())) {
-                    classBuilder.withMethod(methodName, transform.type, methodFlags.flagsMask(), mb -> {
+                        && body != null
+                        && body.type.descriptorString().equals(methodModel.methodType().stringValue())) {
+                    classBuilder.withMethod(methodName, body.type, methodFlags.flagsMask(), mb -> {
                         for (MethodElement me : methodModel) {
                             if (me instanceof CodeModel) {
                                 // Replace the method body with a direct call to `jdk.internal.misc.Unsafe`.
-                                mb.withCode(transform);
+                                mb.withCode(body);
                             } else {
                                 // Preserve non-code method attributes (annotations, etc.)
                                 mb.with(me);
@@ -220,7 +220,7 @@ public final class UnsafeAgent {
                         }
                     });
 
-                    log("rewrote %s%s".formatted(methodName, transform.type.displayDescriptor()), System.out);
+                    log("rewrote %s%s".formatted(methodName, body.type.displayDescriptor()), System.out);
                     return;
                 }
             }
