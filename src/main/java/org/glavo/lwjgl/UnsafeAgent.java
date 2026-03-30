@@ -178,14 +178,14 @@ public final class UnsafeAgent {
     ///
     /// For get methods (`(J)X`):
     ///
-    /// <pre>
-    ///   Unsafe.getUnsafe().getXxx(address)
-    /// </pre>
+    /// ```java
+    /// Unsafe.getUnsafe().getXxx(address)
+    /// ```
     ///
     /// For put methods (`(JX)V`):
-    /// <pre>
-    ///   Unsafe.getUnsafe().putXxx(address, value)
-    /// </pre>
+    /// ```java
+    /// Unsafe.getUnsafe().putXxx(address, value)
+    /// ```
     private static void generateCode(CodeBuilder cb, String unsafeMethodName, MethodTypeDesc mtd) {
         // Push the Unsafe instance
         cb.invokestatic(CD_Unsafe, "getUnsafe", MTD_getUnsafe);
