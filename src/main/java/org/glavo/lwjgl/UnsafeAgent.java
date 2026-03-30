@@ -74,9 +74,7 @@ public final class UnsafeAgent {
         inst.addTransformer(new MemoryUtilTransformer());
     }
 
-    /**
-     * Ensure {@code jdk.internal.misc} is exported to the unnamed module of the given class loader.
-     */
+    /// Ensure `jdk.internal.misc` is exported to the unnamed module of the given class loader.
     private static void ensureExported(Module target) {
         if (target == null) return;
         Module javaBase = Object.class.getModule();
@@ -144,26 +142,20 @@ public final class UnsafeAgent {
         });
     }
 
-    /**
-     * Check if descriptor matches {@code (J)X} — a get method taking a long address
-     * and returning a primitive value.
-     */
+    /// Check if descriptor matches `(J)X` — a get method taking a long address
+    /// and returning a primitive value.
     private static boolean isGetDescriptor(String desc) {
         return desc.length() == 4 && desc.startsWith("(J)");
     }
 
-    /**
-     * Check if descriptor matches {@code (JX)V} — a put method taking a long address
-     * and a primitive value, returning void.
-     */
+    /// Check if descriptor matches `(JX)V` — a put method taking a long address
+    /// and a primitive value, returning void.
     private static boolean isPutDescriptor(String desc) {
         return desc.length() == 5 && desc.startsWith("(J") && desc.endsWith(")V");
     }
 
-    /**
-     * Replace the method body with a direct call to {@code jdk.internal.misc.Unsafe}.
-     * Non-code attributes (annotations, etc.) are preserved.
-     */
+    /// Replace the method body with a direct call to `jdk.internal.misc.Unsafe`.
+    /// Non-code attributes (annotations, etc.) are preserved.
     private static void rewriteMethod(ClassBuilder classBuilder, MethodModel mm, String unsafeMethodName) {
         var mtd = MethodTypeDesc.ofDescriptor(mm.methodType().stringValue());
 
@@ -182,18 +174,18 @@ public final class UnsafeAgent {
         System.out.println("[lwjgl-unsafe-agent] rewrote " + mm);
     }
 
-    /**
-     * Generate bytecode that delegates to {@code jdk.internal.misc.Unsafe}.
-     * <p>
-     * For get methods ({@code (J)X}):
-     * <pre>
-     *   Unsafe.getUnsafe().getXxx(address)
-     * </pre>
-     * For put methods ({@code (JX)V}):
-     * <pre>
-     *   Unsafe.getUnsafe().putXxx(address, value)
-     * </pre>
-     */
+    /// Generate bytecode that delegates to `jdk.internal.misc.Unsafe`.
+    ///
+    /// For get methods (`(J)X`):
+    ///
+    /// <pre>
+    ///   Unsafe.getUnsafe().getXxx(address)
+    /// </pre>
+    ///
+    /// For put methods (`(JX)V`):
+    /// <pre>
+    ///   Unsafe.getUnsafe().putXxx(address, value)
+    /// </pre>
     private static void generateCode(CodeBuilder cb, String unsafeMethodName, MethodTypeDesc mtd) {
         // Push the Unsafe instance
         cb.invokestatic(CD_Unsafe, "getUnsafe", MTD_getUnsafe);
