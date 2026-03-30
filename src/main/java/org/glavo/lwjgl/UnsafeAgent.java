@@ -102,16 +102,22 @@ public final class UnsafeAgent {
                 return null;
             }
 
-            Module javaBase = Object.class.getModule();
-            String miscPackage = CD_Unsafe.packageName();
-            if (!javaBase.isExported(miscPackage, module)) {
-                instrumentation.redefineModule(javaBase,
-                        Set.of(),
-                        Map.of(miscPackage, Set.of(module)),
-                        Map.of(),
-                        Set.of(),
-                        Map.of()
-                );
+            try {
+                Module javaBase = Object.class.getModule();
+                String miscPackage = CD_Unsafe.packageName();
+                if (!javaBase.isExported(miscPackage, module)) {
+                    instrumentation.redefineModule(javaBase,
+                            Set.of(),
+                            Map.of(miscPackage, Set.of(module)),
+                            Map.of(),
+                            Set.of(),
+                            Map.of()
+                    );
+                }
+            } catch (Exception e) {
+                log("Failed to redefine module", System.err);
+                e.printStackTrace(System.err);
+                return null;
             }
 
             try {
