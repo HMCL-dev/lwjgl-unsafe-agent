@@ -21,7 +21,6 @@ import java.lang.constant.ClassDesc;
 import java.lang.constant.MethodTypeDesc;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.Instrumentation;
-import java.lang.invoke.VarHandle;
 import java.lang.reflect.AccessFlag;
 import java.security.ProtectionDomain;
 import java.util.Map;
@@ -40,8 +39,6 @@ public final class UnsafeAgent {
         out.println("[lwjgl-unsafe-agent] " + msg);
     }
 
-    private static Instrumentation instrumentation;
-
     public static void premain(String agentArgs, Instrumentation inst) {
         init(inst);
     }
@@ -53,14 +50,16 @@ public final class UnsafeAgent {
     private static void init(Instrumentation inst) {
         log("LWJGL Unsafe Agent version: " + BuildConfig.PROJECT_VERSION, System.out);
 
-        instrumentation = inst;
-        inst.addTransformer(new MemoryUtilTransformer());
-
-        // Ensure the instrumentation is initialized before we try to transform
-        VarHandle.fullFence();
+        inst.addTransformer(new MemoryUtilTransformer(inst));
     }
 
     private static final class MemoryUtilTransformer implements ClassFileTransformer {
+
+        private final Instrumentation instrumentation;
+
+        MemoryUtilTransformer(Instrumentation instrumentation) {
+            this.instrumentation = instrumentation;
+        }
 
         private abstract static class MemoryMethodBody implements Consumer<CodeBuilder> {
             protected static final MethodTypeDesc MTD_getUnsafe = MethodTypeDesc.of(CD_Unsafe);
