@@ -21,6 +21,16 @@ Then add the following JVM argument to your Minecraft launch options:
 -javaagent:path/to/lwjgl-unsafe-agent.jar
 ```
 
+## Note
+
+This Java Agent requires Java 25+.
+
+This Java Agent can be used with all programs that use LWJGL 3 and theoretically will not cause any compatibility issues. 
+
+However, this Java Agent only affects LWJGL 3.4.0~3.4.1, and for other versions of LWJGL,
+it theoretically will not provide noticeable performance improvements.
+
+
 ## License
 
 This project is licensed under the Apache License, Version 2.0.
